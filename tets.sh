@@ -13,6 +13,7 @@ LOG_FILE="monitor_$(date +'%Y-%m-%d_%H-%M-%S').log"
 # 设置阈值
 CPU_THRESHOLD=80
 MEM_THRESHOLD=85
+CPU_TEMP_THRESHOLD=80  # CPU温度阈值（°C）
 
 # 清理终端
 clear
@@ -40,6 +41,20 @@ monitor_system() {
     echo -e "💾 硬盘使用: ${DISK_USAGE}%"
     echo
 
+    # CPU温度
+    echo -e "${BLUE}=== CPU温度 ===${NC}"
+    CPU_TEMP=$(sensors | grep -A 0 'Core 0' | awk '{print $3}' | sed 's/[^0-9.]//g')
+    if [ -z "$CPU_TEMP" ]; then
+        echo -e "🌡️ CPU温度: 未检测到温度数据"
+    else
+        echo -e "🌡️ CPU温度: ${CPU_TEMP}°C"
+        # CPU温度告警
+        if [ $(echo "${CPU_TEMP} > ${CPU_TEMP_THRESHOLD}" | bc) -eq 1 ]; then
+            echo -e "${RED}⚠️ 警告：CPU温度过高，当前温度为 ${CPU_TEMP}°C${NC}"
+        fi
+    fi
+    echo
+
     # 进程和网络
     echo -e "${BLUE}=== 进程和网络 ===${NC}"
     MAX_CPU_PROCESS=$(ps aux --sort=-%cpu | head -n 1 | awk '{print $11}')
@@ -62,11 +77,11 @@ monitor_system() {
 
     # 告警检查
     if [ $(echo "${CPU_USAGE} > ${CPU_THRESHOLD}" | bc) -eq 1 ]; then
-        echo -e "${RED}⚠️ 警告：CPU使用率过高，当前使用率为${CPU_USAGE}%${NC}"
+        echo -e "${RED}⚠️ 警告：CPU使用率过高，当前使用率为 ${CPU_USAGE}%${NC}"
     fi
 
     if [ $(echo "${MEM_USAGE} > ${MEM_THRESHOLD}" | bc) -eq 1 ]; then
-        echo -e "${RED}⚠️ 警告：内存使用率过高，当前使用率为${MEM_USAGE}%${NC}"
+        echo -e "${RED}⚠️ 警告：内存使用率过高，当前使用率为 ${MEM_USAGE}%${NC}"
     fi
 }
 
@@ -82,6 +97,7 @@ generate_html_report() {
     echo -e "<p>CPU使用率: ${CPU_USAGE}%</p>" >> report.html
     echo -e "<p>内存使用: ${MEM_USAGE}</p>" >> report.html
     echo -e "<p>硬盘使用: ${DISK_USAGE}%</p>" >> report.html
+    echo -e "<p>CPU温度: ${CPU_TEMP}°C</p>" >> report.html
     echo -e "<h2>进程和网络</h2>" >> report.html
     echo -e "<p>最大CPU进程: ${MAX_CPU_PROCESS}</p>" >> report.html
     echo -e "<p>最大内存进程: ${MAX_MEM_PROCESS}</p>" >> report.html
