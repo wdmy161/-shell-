@@ -15,6 +15,64 @@ CPU_THRESHOLD=80
 MEM_THRESHOLD=85
 CPU_TEMP_THRESHOLD=80  # CPU温度阈值（°C）
 
+# 定义需要检查的命令和安装命令
+declare -A REQUIRED_TOOLS=(
+    ["wget"]="wget"
+    ["sensors"]="lm-sensors"
+    ["iostat"]="sysstat"
+    ["ping"]="iputils-ping"
+    ["netstat"]="net-tools"
+)
+
+# 检查并安装依赖工具
+check_dependencies() {
+    echo -e "${BLUE}=== 检查依赖工具 ===${NC}"
+    for cmd in "${!REQUIRED_TOOLS[@]}"; do
+        if ! command -v "$cmd" &> /dev/null; then
+            echo -e "🔍 ${cmd} 未安装，正在安装..."
+            case $(get_package_manager) in
+                "apt")
+                    sudo apt install -y "${REQUIRED_TOOLS[$cmd]}"
+                    ;;
+                "yum")
+                    sudo yum install -y "${REQUIRED_TOOLS[$cmd]}"
+                    ;;
+                "dnf")
+                    sudo dnf install -y "${REQUIRED_TOOLS[$cmd]}"
+                    ;;
+                "zypper")
+                    sudo zypper install -y "${REQUIRED_TOOLS[$cmd]}"
+                    ;;
+                "pacman")
+                    sudo pacman -S --noconfirm "${REQUIRED_TOOLS[$cmd]}"
+                    ;;
+                *)
+                    echo -e "${RED}⚠️  不支持的包管理器${NC}"
+                    exit 1
+                    ;;
+            esac
+        fi
+    done
+    echo -e "${GREEN}✅ 所有依赖工具已安装！${NC}"
+}
+
+# 获取包管理器
+get_package_manager() {
+    if command -v apt &> /dev/null; then
+        echo "apt"
+    elif command -v yum &> /dev/null; then
+        echo "yum"
+    elif command -v dnf &> /dev/null; then
+        echo "dnf"
+    elif command -v zypper &> /dev/null; then
+        echo "zypper"
+    elif command -v pacman &> /dev/null; then
+        echo "pacman"
+    else
+        echo "unknown"
+    fi
+}
+
 # 清理终端
 clear
 
@@ -112,6 +170,9 @@ generate_html_report() {
 record_log() {
     echo -e "[$(date +'%Y-%m-%d %H:%M:%S')] ${1}" >> ${LOG_FILE}
 }
+
+# 检查并安装依赖工具
+check_dependencies
 
 # 主函数
 main() {
